@@ -4,31 +4,30 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
-  OneToMany,
-  OneToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
 import { v4 as uuid } from "uuid";
 
 import { User } from "../../users/entities/User";
-import { Transfer } from "./Transfer";
 
-enum OperationType {
-  DEPOSIT = "deposit",
-  WITHDRAW = "withdraw",
-}
-
-@Entity("statements")
-export class Statement {
+@Entity("transfers")
+export class Transfer {
   @PrimaryGeneratedColumn("uuid")
+  transfer_id: string;
+
+  @Column("uuid")
   id?: string;
 
   @Column("uuid")
-  user_id: string;
+  sender_id: string;
 
   @ManyToOne(() => User, (user) => user.statement)
-  @JoinColumn({ name: "user_id" })
+  @JoinColumn({ name: "id" })
   user: User;
+
+  @ManyToOne(() => User, (user) => user.statement)
+  @JoinColumn({ name: "sender_id" })
+  sender: User;
 
   @Column()
   description: string;
@@ -36,15 +35,8 @@ export class Statement {
   @Column("decimal", { precision: 5, scale: 2 })
   amount: number;
 
-  @OneToOne(() => Transfer)
-  @JoinColumn({ name: "transfer_id" })
-  transfer: Transfer;
-
-  @Column()
-  transfer_id?: string;
-
-  @Column({ type: "enum", enum: OperationType })
-  type: OperationType;
+  @Column({ default: "transfer" })
+  type: string;
 
   @CreateDateColumn()
   created_at: Date;
@@ -53,8 +45,8 @@ export class Statement {
   updated_at: Date;
 
   constructor() {
-    if (!this.id) {
-      this.id = uuid();
+    if (!this.transfer_id) {
+      this.transfer_id = uuid();
     }
   }
 }

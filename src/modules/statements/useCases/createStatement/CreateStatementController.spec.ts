@@ -1,114 +1,92 @@
 import request from "supertest";
-import jwt from "jsonwebtoken";
-import { v4 as uuidV4 } from "uuid";
-
 import { Connection, createConnection } from "typeorm";
+import jwt from "jsonwebtoken";
+import { v4 as uuid } from "uuid";
 
 import authConfig from "../../../../config/auth";
 import { app } from "../../../../app";
+import { ICreateUserDTO } from "../../../users/useCases/createUser/ICreateUserDTO";
 
-describe("Create Statement Controller", () => {
-  let connection: Connection;
+describe("Create Statement Use Case", () => {
+  let db: Connection;
+
+  enum OperationType {
+    DEPOSIT = "deposit",
+    WITHDRAW = "withdraw",
+  }
+
+  interface ICreateStatementDTO {
+    user_id: string;
+    amount: number;
+    description: string;
+    type: OperationType;
+  }
+
+  const statementData: ICreateStatementDTO = {
+    user_id: "",
+    amount: 0,
+    description: "Statement Test",
+    type: OperationType.WITHDRAW,
+  };
+
+  const userData: ICreateUserDTO = {
+    name: "Test Admin",
+    email: "admin@test.com",
+    password: "test123",
+  };
 
   beforeAll(async () => {
-    connection = await createConnection();
-    await connection.runMigrations();
+    db = await createConnection();
+    await db.runMigrations();
   });
 
   afterAll(async () => {
-    await connection.dropDatabase();
-    await connection.close();
+    await db.dropDatabase();
+    await db.close();
   });
 
   it("should be able to create a new statement deposit", async () => {
-    await request(app).post("/api/v1/users").send({
-      name: "Geovanne",
-      email: "geovannemoro@hotmail.com",
-      password: "123456",
-    });
+    await request(app).post("/api/v1/users").send(userData);
 
-    const responseAuthentication = await request(app)
+    const responseAuthenticate = await request(app)
       .post("/api/v1/sessions")
-      .send({ email: "geovannemoro@hotmail.com", password: "123456" });
+      .send({
+        email: userData.email,
+        password: userData.password,
+      });
 
-    const { user, token } = responseAuthentication.body;
-
-    const statement = await request(app)
+    const response = await request(app)
       .post("/api/v1/statements/deposit")
       .send({
-        amount: 600,
-        description: "statement test",
+        amount: 900,
+        description: statementData.description,
       })
       .set({
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${responseAuthenticate.body.token}`,
       });
 
-    expect(statement.body).toHaveProperty("id");
-    expect(statement.body.user_id).toEqual(user.id);
-    expect(statement.body.type).toBe("deposit");
-    expect(statement.body.amount).toBe(600);
-    expect(statement.body.description).toBe("statement test");
-  });
-
-  it("should be able to create a new statement withdraw", async () => {
-    await request(app).post("/api/v1/users").send({
-      name: "Geovanne",
-      email: "geovannemoro@hotmail.com",
-      password: "123456",
-    });
-
-    const responseAuthentication = await request(app)
-      .post("/api/v1/sessions")
-      .send({ email: "geovannemoro@hotmail.com", password: "123456" });
-
-    const { user, token } = responseAuthentication.body;
-
-    const statement = await request(app)
-      .post("/api/v1/statements/withdraw")
-      .send({
-        amount: 500,
-        description: "statement test",
-      })
-      .set({
-        Authorization: `Bearer ${token}`,
-      });
-
-    expect(statement.body).toHaveProperty("id");
-    expect(statement.body.user_id).toEqual(user.id);
-    expect(statement.body.type).toBe("withdraw");
-    expect(statement.body.amount).toBe(500);
-    expect(statement.body.description).toBe("statement test");
+    expect(response.body).toHaveProperty("id");
+    expect(response.body.user_id).toEqual(responseAuthenticate.body.user.id);
+    expect(response.body.type).toEqual(OperationType.DEPOSIT);
+    expect(response.body.amount).toEqual(900);
+    expect(response.body.description).toEqual(statementData.description);
   });
 
   it("should no be able to create a new statement it if user not exists", async () => {
-    await request(app).post("/api/v1/users").send({
-      name: "Geovanne",
-      email: "geovannemoro@hotmail.com",
-      password: "123456",
-    });
+    await request(app).post("/api/v1/users").send(userData);
 
     const { secret, expiresIn } = authConfig.jwt;
 
-    const token = jwt.sign(
-      {
-        user: {
-          name: "Geovanne",
-          email: "geovannemoro@hotmail.com",
-          password: "123456",
-        },
-      },
-      secret,
-      {
-        subject: uuidV4(),
-        expiresIn,
-      }
-    );
+    const token = jwt.sign({ user: userData }, secret, {
+      subject: uuid(),
+      expiresIn,
+    });
 
     const response = await request(app)
-      .post("/api/v1/statements/withdraw")
+      .post("/api/v1/statements/deposit")
       .send({
-        amount: 1000,
-        description: "statement without user",
+        amount: 0,
+        description: statementData.description,
       })
       .set({
         Authorization: `Bearer ${token}`,
@@ -117,40 +95,54 @@ describe("Create Statement Controller", () => {
     expect(response.status).toBe(404);
   });
 
+  it("should be able to create a new statement", async () => {
+    await request(app).post("/api/v1/users").send(userData);
+
+    const responseAuthenticate = await request(app)
+      .post("/api/v1/sessions")
+      .send({
+        email: userData.email,
+        password: userData.password,
+      });
+
+    const response = await request(app)
+      .post("/api/v1/statements/withdraw")
+      .send({
+        amount: 500,
+        description: statementData.description,
+      })
+      .set({
+        Authorization: `Bearer ${responseAuthenticate.body.token}`,
+      });
+
+    expect(response.body).toHaveProperty("id");
+    expect(response.body.user_id).toEqual(responseAuthenticate.body.user.id);
+    expect(response.body.type).toEqual(OperationType.WITHDRAW);
+    expect(response.body.amount).toEqual(500);
+    expect(response.body.description).toEqual(statementData.description);
+  });
+
   it("should no be able to create a new statement it if insufficient funds", async () => {
-    await request(app).post("/api/v1/users").send({
-      name: "Geovanne",
-      email: "geovannemoro@hotmail.com",
-      password: "123456",
-    });
+    await request(app).post("/api/v1/users").send(userData);
 
     const { secret, expiresIn } = authConfig.jwt;
 
-    const token = jwt.sign(
-      {
-        user: {
-          name: "Geovanne",
-          email: "geovannemoro@hotmail.com",
-          password: "123456",
-        },
-      },
-      secret,
-      {
-        subject: uuidV4(),
-        expiresIn,
-      }
-    );
+    const token = jwt.sign({ user: userData }, secret, {
+      subject: uuid(),
+      expiresIn,
+    });
 
-    const statement = await request(app)
-      .post("/api/v1/statements/withdraw")
+    const response = await request(app)
+      .post("/api/v1/statements/withdwaw")
       .send({
         amount: 1000,
-        description: "statement test",
+        description: statementData.description,
+        type: OperationType.WITHDRAW,
       })
       .set({
         Authorization: `Bearer ${token}`,
       });
 
-    expect(statement.status).toBe(404);
+    expect(response.status).toBe(404);
   });
 });
