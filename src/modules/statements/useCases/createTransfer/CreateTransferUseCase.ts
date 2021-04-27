@@ -3,7 +3,7 @@ import { AppError } from "../../../../shared/errors/AppError";
 import { IUsersRepository } from "../../../users/repositories/IUsersRepository";
 import { Transfer } from "../../entities/Transfer";
 import { IStatementsRepository } from "../../repositories/IStatementsRepository";
-import { ITransferRepository } from "../../repositories/ITransferRepository";
+import { ITransfersRepository } from "../../repositories/ITransfersRepository";
 import { ICreateTransferDTO } from "./ICreateTransferDTO";
 
 @injectable()
@@ -12,7 +12,7 @@ class CreateTransferUseCase {
     @inject("StatementsRepository")
     private statementsRepository: IStatementsRepository,
     @inject("TransfersRepository")
-    private transfersRepository: ITransferRepository,
+    private transfersRepository: ITransfersRepository,
     @inject("UsersRepository")
     private usersRepository: IUsersRepository
   ) {}

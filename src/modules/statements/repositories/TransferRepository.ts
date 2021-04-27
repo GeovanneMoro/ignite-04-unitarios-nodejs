@@ -1,7 +1,7 @@
 import { getRepository, Repository } from "typeorm";
 import { Transfer } from "../entities/Transfer";
 import { ICreateTransferDTO } from "../useCases/createTransfer/ICreateTransferDTO";
-import { ITransferRepository } from "./ITransferRepository";
+import { ITransfersRepository } from "./ITransfersRepository";
 
 enum OperationType {
   DEPOSIT = "deposit",
@@ -9,7 +9,7 @@ enum OperationType {
   TRANSFER = "transfer",
 }
 
-export class TransfersRepository implements ITransferRepository {
+export class TransfersRepository implements ITransfersRepository {
   private repository: Repository<Transfer>;
 
   constructor() {
