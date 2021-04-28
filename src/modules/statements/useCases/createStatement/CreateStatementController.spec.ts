@@ -7,7 +7,7 @@ import authConfig from "../../../../config/auth";
 import { app } from "../../../../app";
 import { ICreateUserDTO } from "../../../users/useCases/createUser/ICreateUserDTO";
 
-describe("Create Statement Use Case", () => {
+describe("Create Statement Controller", () => {
   let db: Connection;
 
   enum OperationType {
